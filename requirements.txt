@@ -1,10 +1,17 @@
-streamlit
- google-cloud-texttospeech
- moviepy
- Pillow
- numpy
- google-api-python-client
- google-auth-httplib2
- google-auth-oauthlib
- imageio
- imageio-ffmpeg
+streamlit==1.29.0
+google-cloud-texttospeech==2.21.1
+moviepy==2.0.0.dev2
+decorator==4.4.2
+imageio==2.31.1
+imageio-ffmpeg==0.4.5
+tqdm==4.64.1
+proglog==0.1.9
+numpy==1.26.2
+Pillow==10.4.0
+google-api-core==2.24.0
+google-auth==2.36.0
+grpcio==1.68.1
+protobuf==5.29.1
+google-api-python-client==2.118.0
+google-auth-httplib2==0.1.1
+google-auth-oauthlib==1.2.0
