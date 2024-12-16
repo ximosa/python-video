@@ -284,18 +284,26 @@ def main():
               with open(nombre_salida_completo, 'rb') as file:
                 st.download_button(label="Descargar video",data=file,file_name=nombre_salida_completo)
 
-              if st.button("Subir video a Youtube"):
-                descripcion = texto[:200]
-                with st.spinner('Subiendo video a youtube...'):
-                    upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion, youtube_credentials_path)
-                    if upload_success:
-                        st.success(f"Video subido exitosamente a youtube. ID: {upload_message}")
-                    else:
-                      st.error(f"Error al subir a youtube: {upload_message}")
-
+              # Usamos un st.session_state para controlar si el video se ha generado
+              st.session_state.video_generado = True
             else:
               st.error(f"Error al generar video: {message}")
-    
+              st.session_state.video_generado = False
+
+      # Mostramos el boton de Subir solo si el video se ha generado correctamente
+      if st.session_state.get("video_generado", False):
+        if st.button("Subir video a Youtube"):
+            descripcion = texto[:200]
+            nombre_salida_completo = f"{nombre_salida}.mp4"
+            with st.spinner('Subiendo video a youtube...'):
+                upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion, youtube_credentials_path)
+                if upload_success:
+                    st.success(f"Video subido exitosamente a youtube. ID: {upload_message}")
+                else:
+                    st.error(f"Error al subir a youtube: {upload_message}")
     
 if __name__ == "__main__":
+    # Inicializar session state
+    if "video_generado" not in st.session_state:
+      st.session_state.video_generado = False
     main()
