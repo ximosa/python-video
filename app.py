@@ -21,6 +21,13 @@ with open("google_credentials.json", "w") as f:
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google_credentials.json"
 
+# Cargar credenciales de Youtube desde secrets
+youtube_credentials = dict(st.secrets.youtube_credentials)
+with open("youtube_credentials.json", "w") as f:
+    json.dump(youtube_credentials, f)
+
+youtube_credentials_path = "youtube_credentials.json"
+
 # Configuración de voces
 VOCES_DISPONIBLES = {
     'es-ES-Journey-D': texttospeech.SsmlVoiceGender.MALE,
@@ -280,7 +287,7 @@ def main():
               if st.button("Subir video a Youtube"):
                 descripcion = texto[:200]
                 with st.spinner('Subiendo video a youtube...'):
-                    upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion, "google_credentials.json")
+                    upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion, youtube_credentials_path)
                     if upload_success:
                         st.success(f"Video subido exitosamente a youtube. ID: {upload_message}")
                     else:
