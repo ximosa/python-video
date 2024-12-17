@@ -26,6 +26,8 @@ youtube_credentials = dict(st.secrets.youtube_web_credentials)
 with open("youtube_web_credentials.json", "w") as f:
     json.dump(youtube_credentials, f)
 
+os.environ["YOUTUBE_APPLICATION_CREDENTIALS"] = "youtube_web_credentials.json"
+
 youtube_credentials_path = "youtube_web_credentials.json"
 
 # Configuración de voces
@@ -232,7 +234,7 @@ def upload_video(file_path, title, description, credentials_path):
 
     # Autenticación
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-        credentials_path, SCOPES, redirect_uri='http://localhost')
+        credentials_path, SCOPES)
     credentials = flow.run_local_server(port=0)
     youtube = googleapiclient.discovery.build(
         API_SERVICE_NAME, API_VERSION, credentials=credentials)
@@ -283,8 +285,10 @@ def main():
               st.video(nombre_salida_completo)
               with open(nombre_salida_completo, 'rb') as file:
                 st.download_button(label="Descargar video",data=file,file_name=nombre_salida_completo)
+                
+              # Guardamos la ruta del video generado en session_state
+              st.session_state.video_path = nombre_salida_completo
 
-              # Usamos un st.session_state para controlar si el video se ha generado
               st.session_state.video_generado = True
             else:
               st.error(f"Error al generar video: {message}")
@@ -292,18 +296,23 @@ def main():
 
       # Mostramos el boton de Subir solo si el video se ha generado correctamente
       if st.session_state.get("video_generado", False):
-        if st.button("Subir video a Youtube"):
-            descripcion = texto[:200]
-            nombre_salida_completo = f"{nombre_salida}.mp4"
-            with st.spinner('Subiendo video a youtube...'):
-                upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion, youtube_credentials_path)
-                if upload_success:
-                    st.success(f"Video subido exitosamente a youtube. ID: {upload_message}")
+            if st.button("Subir video a Youtube"):
+                descripcion = texto[:200]
+                if 'video_path' in st.session_state:
+                    nombre_salida_completo = st.session_state.video_path
+                    with st.spinner('Subiendo video a youtube...'):
+                        upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion, youtube_credentials_path)
+                        if upload_success:
+                            st.success(f"Video subido exitosamente a youtube. ID: {upload_message}")
+                        else:
+                            st.error(f"Error al subir a youtube: {upload_message}")
                 else:
-                    st.error(f"Error al subir a youtube: {upload_message}")
+                    st.error("Error: No se encuentra la ruta al video")
     
 if __name__ == "__main__":
     # Inicializar session state
     if "video_generado" not in st.session_state:
       st.session_state.video_generado = False
+    if "video_path" not in st.session_state:
+        st.session_state.video_path = None
     main()
