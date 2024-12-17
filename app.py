@@ -21,15 +21,6 @@ with open("google_credentials.json", "w") as f:
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google_credentials.json"
 
-# Cargar credenciales de Youtube desde secrets
-youtube_credentials = dict(st.secrets.youtube_web_credentials)
-with open("youtube_web_credentials.json", "w") as f:
-    json.dump(youtube_credentials, f)
-
-os.environ["YOUTUBE_APPLICATION_CREDENTIALS"] = "youtube_web_credentials.json"
-
-youtube_credentials_path = "youtube_web_credentials.json"
-
 # Configuración de voces
 VOCES_DISPONIBLES = {
     'es-ES-Journey-D': texttospeech.SsmlVoiceGender.MALE,
@@ -225,7 +216,7 @@ def create_simple_video(texto, nombre_salida, voz):
 
 
 # Funcionalidad para subir a YouTube
-def upload_video(file_path, title, description, credentials_path):
+def upload_video(file_path, title, description):
     """Sube un video a YouTube."""
 
     SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
@@ -233,38 +224,48 @@ def upload_video(file_path, title, description, credentials_path):
     API_VERSION = "v3"
 
     # Autenticación
-    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-        credentials_path, SCOPES)
-    credentials = flow.run_local_server(port=0)
-    youtube = googleapiclient.discovery.build(
-        API_SERVICE_NAME, API_VERSION, credentials=credentials)
-
-    # Configuración del video
-    body = {
-        'snippet': {
-            'title': title,
-            'description': description,
-            'categoryId': 22  # Categoría "People & Blogs"
-        },
-        'status': {
-            'privacyStatus': 'public'  # O "unlisted" o "private"
-        }
-    }
-
-    # Subir el video
+    credentials_data = dict(st.secrets.youtube_web_credentials)
+    
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmpfile:
+        json.dump(credentials_data, tmpfile)
+        credentials_path = tmpfile.name
+        
     try:
-        request = youtube.videos().insert(
-            part="snippet,status",
-            body=body,
-            media_body=googleapiclient.http.MediaFileUpload(file_path)
-        )
-        response = request.execute()
+        flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
+            credentials_path, SCOPES)
+        credentials = flow.run_local_server(port=0)
+        youtube = googleapiclient.discovery.build(
+            API_SERVICE_NAME, API_VERSION, credentials=credentials)
 
-        print(f"Video subido con éxito. ID: {response['id']}")
-        return True, response['id']
-    except googleapiclient.errors.HttpError as e:
-        print(f"Error al subir el video: {e}")
-        return False, str(e)
+        # Configuración del video
+        body = {
+            'snippet': {
+                'title': title,
+                'description': description,
+                'categoryId': 22  # Categoría "People & Blogs"
+            },
+            'status': {
+                'privacyStatus': 'public'  # O "unlisted" o "private"
+            }
+        }
+
+        # Subir el video
+        try:
+            request = youtube.videos().insert(
+                part="snippet,status",
+                body=body,
+                media_body=googleapiclient.http.MediaFileUpload(file_path)
+            )
+            response = request.execute()
+
+            print(f"Video subido con éxito. ID: {response['id']}")
+            return True, response['id']
+        except googleapiclient.errors.HttpError as e:
+            print(f"Error al subir el video: {e}")
+            return False, str(e)
+    finally:
+        if os.path.exists(credentials_path):
+            os.remove(credentials_path)
     
 def main():
     st.title("Creador de Videos Automático")
@@ -297,7 +298,7 @@ def main():
                 descripcion = texto[:200]
                 nombre_salida_completo = st.session_state.video_path
                 with st.spinner('Subiendo video a youtube...'):
-                    upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion, youtube_credentials_path)
+                    upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion)
                     if upload_success:
                         st.success(f"Video subido exitosamente a youtube. ID: {upload_message}")
                     else:
