@@ -11,6 +11,8 @@ import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.errors
 import tempfile
+from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 
 logging.basicConfig(level=logging.INFO)
 
@@ -223,19 +225,18 @@ def upload_video(file_path, title, description):
     API_SERVICE_NAME = "youtube"
     API_VERSION = "v3"
 
-    # Autenticación
-    credentials_data = dict(st.secrets.youtube_web_credentials)
+    # Cargar las credenciales de YouTube
+    credentials_data = dict(st.secrets.youtube_credentials)
     
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmpfile:
         json.dump(credentials_data, tmpfile)
         credentials_path = tmpfile.name
-        
+    
+    
     try:
-        flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-            credentials_path, SCOPES)
-        credentials = flow.run_local_server(port=0)
-        youtube = googleapiclient.discovery.build(
-            API_SERVICE_NAME, API_VERSION, credentials=credentials)
+            
+        creds = Credentials.from_authorized_user_file(credentials_path, SCOPES)
+        youtube = googleapiclient.discovery.build(API_SERVICE_NAME, API_VERSION, credentials=creds)
 
         # Configuración del video
         body = {
@@ -264,8 +265,8 @@ def upload_video(file_path, title, description):
             print(f"Error al subir el video: {e}")
             return False, str(e)
     finally:
-        if os.path.exists(credentials_path):
-            os.remove(credentials_path)
+      if os.path.exists(credentials_path):
+          os.remove(credentials_path)
     
 def main():
     st.title("Creador de Videos Automático")
