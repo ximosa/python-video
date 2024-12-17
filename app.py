@@ -288,31 +288,23 @@ def main():
                 
               # Guardamos la ruta del video generado en session_state
               st.session_state.video_path = nombre_salida_completo
-
-              st.session_state.video_generado = True
             else:
               st.error(f"Error al generar video: {message}")
-              st.session_state.video_generado = False
 
       # Mostramos el boton de Subir solo si el video se ha generado correctamente
-      if st.session_state.get("video_generado", False):
+      if st.session_state.get("video_path"):
             if st.button("Subir video a Youtube"):
                 descripcion = texto[:200]
-                if 'video_path' in st.session_state:
-                    nombre_salida_completo = st.session_state.video_path
-                    with st.spinner('Subiendo video a youtube...'):
-                        upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion, youtube_credentials_path)
-                        if upload_success:
-                            st.success(f"Video subido exitosamente a youtube. ID: {upload_message}")
-                        else:
-                            st.error(f"Error al subir a youtube: {upload_message}")
-                else:
-                    st.error("Error: No se encuentra la ruta al video")
+                nombre_salida_completo = st.session_state.video_path
+                with st.spinner('Subiendo video a youtube...'):
+                    upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion, youtube_credentials_path)
+                    if upload_success:
+                        st.success(f"Video subido exitosamente a youtube. ID: {upload_message}")
+                    else:
+                        st.error(f"Error al subir a youtube: {upload_message}")
     
 if __name__ == "__main__":
     # Inicializar session state
-    if "video_generado" not in st.session_state:
-      st.session_state.video_generado = False
     if "video_path" not in st.session_state:
         st.session_state.video_path = None
     main()
