@@ -22,7 +22,17 @@ with open("google_credentials.json", "w") as f:
     json.dump(credentials, f)
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google_credentials.json"
+youtube_creds = st.secrets["youtube_credentials"]
 
+client_id = youtube_creds["client_id"]
+client_secret = youtube_creds["client_secret"]
+auth_uri = youtube_creds["auth_uri"]
+token_uri = youtube_creds["token_uri"]
+auth_provider_x509_cert_url = youtube_creds["auth_provider_x509_cert_url"]
+redirect_uris = youtube_creds["redirect_uris"]
+
+print(f"Client ID: {client_id}")
+print(f"Client Secret: {client_secret}")
 # Configuración de voces
 VOCES_DISPONIBLES = {
     'es-ES-Journey-D': texttospeech.SsmlVoiceGender.MALE,
