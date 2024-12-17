@@ -230,10 +230,10 @@ def upload_video(file_path, title, description, credentials_path):
     API_SERVICE_NAME = "youtube"
     API_VERSION = "v3"
 
-# Autenticación
-flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-credentials_path, SCOPES, redirect_uri='http://localhost')
-credentials = flow.run_local_server(port=0)
+    # Autenticación
+    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
+        credentials_path, SCOPES, redirect_uri='http://localhost')
+    credentials = flow.run_local_server(port=0)
     youtube = googleapiclient.discovery.build(
         API_SERVICE_NAME, API_VERSION, credentials=credentials)
 
