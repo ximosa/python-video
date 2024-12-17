@@ -22,11 +22,11 @@ with open("google_credentials.json", "w") as f:
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google_credentials.json"
 
 # Cargar credenciales de Youtube desde secrets
-youtube_credentials = dict(st.secrets.youtube_credentials)
-with open("youtube_credentials.json", "w") as f:
+youtube_credentials = dict(st.secrets.youtube_web_credentials)
+with open("youtube_web_credentials.json", "w") as f:
     json.dump(youtube_credentials, f)
 
-youtube_credentials_path = "youtube_credentials.json"
+youtube_credentials_path = "youtube_web_credentials.json"
 
 # Configuración de voces
 VOCES_DISPONIBLES = {
@@ -232,7 +232,7 @@ def upload_video(file_path, title, description, credentials_path):
 
     # Autenticación
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-        credentials_path, SCOPES)
+        credentials_path, SCOPES, redirect_uri='http://localhost')
     credentials = flow.run_local_server(port=0)
     youtube = googleapiclient.discovery.build(
         API_SERVICE_NAME, API_VERSION, credentials=credentials)
