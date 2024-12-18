@@ -10,7 +10,6 @@ import numpy as np
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.errors
-import tempfile
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 
@@ -274,8 +273,8 @@ def get_youtube_creds():
                 
                 st.write(f'Abre este enlace para autorizar la aplicacion: {auth_url}')
                 
-                if 'code' in st.experimental_get_query_params():
-                    auth_code = st.experimental_get_query_params()['code'][0]
+                if 'code' in st.query_params:
+                    auth_code = st.query_params['code']
                     st.session_state['auth_code'] = auth_code
                 
                 if st.session_state.get('auth_code'):
@@ -288,7 +287,7 @@ def get_youtube_creds():
                 
                    # Limpiar params
                    st.session_state['auth_code'] = None
-                   st.experimental_set_query_params()
+                   st.query_params.clear()
                    st.rerun()
             except Exception as e:
                 print(f"Error durante el flujo de autorización: {e}")
