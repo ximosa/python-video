@@ -32,8 +32,6 @@ token_uri = youtube_creds["token_uri"]
 auth_provider_x509_cert_url = youtube_creds["auth_provider_x509_cert_url"]
 redirect_uris = youtube_creds["redirect_uris"]
 
-print(f"Client ID: {client_id}")
-print(f"Client Secret: {client_secret}")
 
 # Configuración de voces
 VOCES_DISPONIBLES = {
@@ -275,15 +273,23 @@ def get_youtube_creds():
                 st.session_state['auth_url'] = auth_url
                 
                 st.write(f'Abre este enlace para autorizar la aplicacion: {auth_url}')
-                auth_code = st.text_input("Introduce el código de autorización:")
                 
-                if auth_code:
+                if 'code' in st.experimental_get_query_params():
+                    auth_code = st.experimental_get_query_params()['code'][0]
+                    st.session_state['auth_code'] = auth_code
+                
+                if st.session_state.get('auth_code'):
+                   auth_code = st.session_state['auth_code']
                    token = flow.fetch_token(code = auth_code)
                    creds = Credentials.from_authorized_user_info(token,SCOPES)
                    
                    with open(credentials_path, 'w') as token_file:
                        token_file.write(creds.to_json())
-                       
+                
+                   # Limpiar params
+                   st.session_state['auth_code'] = None
+                   st.experimental_set_query_params()
+                   st.rerun()
             except Exception as e:
                 print(f"Error durante el flujo de autorización: {e}")
                 return None
@@ -376,4 +382,6 @@ if __name__ == "__main__":
         st.session_state.video_path = None
     if 'auth_url' not in st.session_state:
         st.session_state['auth_url'] = None
+    if 'auth_code' not in st.session_state:
+        st.session_state['auth_code'] = None
     main()
