@@ -279,16 +279,20 @@ def get_youtube_creds():
                 
                 if st.session_state.get('auth_code'):
                    auth_code = st.session_state['auth_code']
-                   token = flow.fetch_token(code = auth_code)
-                   creds = Credentials.from_authorized_user_info(token,SCOPES)
-                   
-                   with open(credentials_path, 'w') as token_file:
-                       token_file.write(creds.to_json())
-                
-                   # Limpiar params
-                   st.session_state['auth_code'] = None
-                   st.query_params.clear()
-                   st.rerun()
+                   try:
+                       token = flow.fetch_token(code = auth_code)
+                       creds = Credentials.from_authorized_user_info(token,SCOPES)
+                       
+                       with open(credentials_path, 'w') as token_file:
+                            token_file.write(creds.to_json())
+                        
+                       # Limpiar params
+                       st.session_state['auth_code'] = None
+                       st.query_params.clear()
+                       st.rerun()
+                   except Exception as e:
+                       print(f"Error al obtener el token: {e}")
+                       st.error(f"Error al obtener el token: {e}")
             except Exception as e:
                 print(f"Error durante el flujo de autorización: {e}")
                 return None
