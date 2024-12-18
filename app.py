@@ -350,9 +350,10 @@ def main():
         
         if st.button("Generar Video"):
             with st.spinner('Generando video...'):
-                success, video_bytes, message = create_simple_video(texto, nombre_salida, voz_seleccionada)
+                success, video_buffer, message = create_simple_video(texto, nombre_salida, voz_seleccionada)
                 if success:
                   st.success(message)
+                  video_bytes = video_buffer.getvalue()
                   st.video(video_bytes)
                   st.download_button(label="Descargar video",data=video_bytes,file_name=f"{nombre_salida}.mp4")
                     
