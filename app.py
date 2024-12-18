@@ -353,14 +353,26 @@ def main():
                 success, video_buffer, message = create_simple_video(texto, nombre_salida, voz_seleccionada)
                 if success:
                   st.success(message)
-                  video_bytes = video_buffer.getvalue()
-                  st.video(video_bytes)
-                  st.download_button(label="Descargar video",data=video_bytes,file_name=f"{nombre_salida}.mp4")
+                  video_bytes = video_buffer.getvalue() # Obtener los bytes del objeto BytesIO
+                  st.video(video_bytes) # Pasar los bytes a st.video
+                  st.download_button(label="Descargar video",data=video_bytes,file_name=f"{nombre_salida}.mp4") # Pasar los bytes a st.download_button
                     
                   # Guardamos el video_bytes en session_state
                   st.session_state.video_bytes = video_bytes
                 else:
                   st.error(f"Error al generar video: {message}")
+
+        # Mostramos el boton de Subir solo si el video se ha generado correctamente
+        if st.session_state.get("video_bytes"):
+            if st.button("Subir video a Youtube"):
+                descripcion = texto[:200]
+                video_bytes = st.session_state.video_bytes
+                with st.spinner('Subiendo video a youtube...'):
+                    upload_success, upload_message = upload_video(video_bytes,nombre_salida,descripcion)
+                    if upload_success:
+                        st.success(f"Video subido exitosamente a youtube. ID: {upload_message}")
+                    else:
+                        st.error(f"Error al subir a youtube: {upload_message}")
 
         # Mostramos el boton de Subir solo si el video se ha generado correctamente
         if st.session_state.get("video_bytes"):
