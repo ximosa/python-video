@@ -293,6 +293,7 @@ def get_youtube_creds():
                    except Exception as e:
                        print(f"Error al obtener el token: {e}")
                        st.error(f"Error al obtener el token: {e}")
+                       return None
             except Exception as e:
                 print(f"Error durante el flujo de autorización: {e}")
                 return None
