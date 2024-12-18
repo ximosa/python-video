@@ -3,14 +3,14 @@ import os
 import json
 import logging
 import time
+import io
 from google.cloud import texttospeech
 from moviepy.editor import AudioFileClip, ImageClip, concatenate_videoclips
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
-import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.errors
-import tempfile
+from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 
@@ -25,15 +25,9 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google_credentials.json"
 
 # Cargar credenciales de YouTube desde secrets
 youtube_creds = st.secrets["youtube_credentials"]
-client_id = youtube_creds["client_id"]
-client_secret = youtube_creds["client_secret"]
-auth_uri = youtube_creds["auth_uri"]
-token_uri = youtube_creds["token_uri"]
-auth_provider_x509_cert_url = youtube_creds["auth_provider_x509_cert_url"]
-redirect_uris = youtube_creds["redirect_uris"]
+access_token = youtube_creds["access_token"]
 
-print(f"Client ID: {client_id}")
-print(f"Client Secret: {client_secret}")
+print(f"Access Token: {access_token}")
 
 # Configuración de voces
 VOCES_DISPONIBLES = {
@@ -85,10 +79,9 @@ def create_text_image(text, size=(1280, 360), font_size=30, line_height=40):
 
 # Funcion de creacion de video
 def create_simple_video(texto, nombre_salida, voz):
-    archivos_temp = []
     clips_audio = []
     clips_finales = []
-    
+    archivos_temp = []
     try:
         logging.info("Iniciando proceso de creación de video...")
         frases = [f.strip() + "." for f in texto.split('.') if f.strip()]
@@ -177,15 +170,18 @@ def create_simple_video(texto, nombre_salida, voz):
         
         video_final = concatenate_videoclips(clips_finales, method="compose")
         
+        video_buffer = io.BytesIO()
         video_final.write_videofile(
-            nombre_salida,
+            video_buffer,
+            format='mp4',
             fps=24,
             codec='libx264',
             audio_codec='aac',
             preset='ultrafast',
-            threads=4
+            threads=4,
         )
-        
+        video_buffer.seek(0)
+
         video_final.close()
         
         for clip in clips_audio:
@@ -193,7 +189,7 @@ def create_simple_video(texto, nombre_salida, voz):
         
         for clip in clips_finales:
             clip.close()
-            
+
         for temp_file in archivos_temp:
             try:
                 if os.path.exists(temp_file):
@@ -202,7 +198,7 @@ def create_simple_video(texto, nombre_salida, voz):
             except:
                 pass
         
-        return True, "Video generado exitosamente"
+        return True, video_buffer, "Video generado exitosamente"
         
     except Exception as e:
         logging.error(f"Error: {str(e)}")
@@ -217,7 +213,7 @@ def create_simple_video(texto, nombre_salida, voz):
                 clip.close()
             except:
                 pass
-                
+        
         for temp_file in archivos_temp:
             try:
                 if os.path.exists(temp_file):
@@ -226,76 +222,16 @@ def create_simple_video(texto, nombre_salida, voz):
             except:
                 pass
         
-        return False, str(e)
+        return False, None, str(e)
 
-# Función para obtener las credenciales de YouTube
-def get_youtube_creds():
-    """Obtiene y gestiona las credenciales de YouTube."""
-    SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
-    credentials_path = "credentials.json"
-    creds = None
-    
-    if os.path.exists(credentials_path):
-        try:
-            creds = Credentials.from_authorized_user_file(credentials_path, SCOPES)
-        except ValueError as e:
-            print(f"Error al cargar credenciales: {e}. Eliminando el archivo de credenciales.")
-            os.remove(credentials_path)
-            creds = None  # Forzar la creación de nuevas credenciales
-        except Exception as e:
-            print(f"Error al cargar credenciales: {e}. Intenta ejecutar la aplicación nuevamente")
-            return None
-    
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-            except Exception as e:
-                print(f"Error al refrescar las credenciales: {e}. Se requiere nueva autenticación.")
-                os.remove(credentials_path)
-                creds = None
-        if not creds:
-            try:
-                # El flujo debe estar en formato "web" y las redirect uris deben de concordar
-                flow = google_auth_oauthlib.flow.Flow.from_client_config(
-                   {
-                    "web":{
-                        "client_id": client_id,
-                        "project_id": st.secrets["youtube_credentials"]["project_id"],
-                        "auth_uri": auth_uri,
-                        "token_uri": token_uri,
-                        "auth_provider_x509_cert_url": auth_provider_x509_cert_url,
-                        "client_secret": client_secret,
-                        "redirect_uris": redirect_uris
-                        }
-                    },
-                    scopes = SCOPES)
-                
-                auth_url, _ = flow.authorization_url(prompt='consent')
-                st.session_state['auth_url'] = auth_url
-                
-                st.write(f'Abre este enlace para autorizar la aplicacion: {auth_url}')
-                auth_code = st.text_input("Introduce el código de autorización:")
-                
-                if auth_code:
-                   token = flow.fetch_token(code = auth_code)
-                   creds = Credentials.from_authorized_user_info(token,SCOPES)
-                   
-                   with open(credentials_path, 'w') as token_file:
-                       token_file.write(creds.to_json())
-                       
-            except Exception as e:
-                print(f"Error durante el flujo de autorización: {e}")
-                return None
-    return creds
 
 # Funcionalidad para subir a YouTube
-def upload_video(file_path, title, description):
+def upload_video(video_bytes, title, description):
     """Sube un video a YouTube."""
     API_SERVICE_NAME = "youtube"
     API_VERSION = "v3"
-    
-    creds = get_youtube_creds()
+
+    creds = Credentials(token=access_token)
     
     if not creds:
         print("No se pudieron obtener las credenciales de YouTube.")
@@ -316,11 +252,13 @@ def upload_video(file_path, title, description):
 
         # Subir el video
         try:
+            media_body = googleapiclient.http.MediaIoBaseUpload(video_bytes, mimetype='video/mp4',resumable=True)
             request = youtube.videos().insert(
                 part="snippet,status",
                 body=body,
-                media_body=googleapiclient.http.MediaFileUpload(file_path)
+                media_body=media_body
             )
+
             response = request.execute()
 
             print(f"Video subido con éxito. ID: {response['id']}")
@@ -345,26 +283,24 @@ def main():
         
         if st.button("Generar Video"):
             with st.spinner('Generando video...'):
-                nombre_salida_completo = f"{nombre_salida}.mp4"
-                success, message = create_simple_video(texto, nombre_salida_completo, voz_seleccionada)
+                success, video_bytes, message = create_simple_video(texto, nombre_salida, voz_seleccionada)
                 if success:
                   st.success(message)
-                  st.video(nombre_salida_completo)
-                  with open(nombre_salida_completo, 'rb') as file:
-                    st.download_button(label="Descargar video",data=file,file_name=nombre_salida_completo)
+                  st.video(video_bytes)
+                  st.download_button(label="Descargar video",data=video_bytes,file_name=f"{nombre_salida}.mp4")
                     
-                  # Guardamos la ruta del video generado en session_state
-                  st.session_state.video_path = nombre_salida_completo
+                  # Guardamos el video_bytes en session_state
+                  st.session_state.video_bytes = video_bytes
                 else:
                   st.error(f"Error al generar video: {message}")
 
         # Mostramos el boton de Subir solo si el video se ha generado correctamente
-        if st.session_state.get("video_path"):
+        if st.session_state.get("video_bytes"):
             if st.button("Subir video a Youtube"):
                 descripcion = texto[:200]
-                nombre_salida_completo = st.session_state.video_path
+                video_bytes = st.session_state.video_bytes
                 with st.spinner('Subiendo video a youtube...'):
-                    upload_success, upload_message = upload_video(nombre_salida_completo,nombre_salida,descripcion)
+                    upload_success, upload_message = upload_video(video_bytes,nombre_salida,descripcion)
                     if upload_success:
                         st.success(f"Video subido exitosamente a youtube. ID: {upload_message}")
                     else:
@@ -372,8 +308,6 @@ def main():
 
 if __name__ == "__main__":
     # Inicializar session state
-    if "video_path" not in st.session_state:
-        st.session_state.video_path = None
-    if 'auth_url' not in st.session_state:
-        st.session_state['auth_url'] = None
+    if "video_bytes" not in st.session_state:
+        st.session_state.video_bytes = None
     main()
