@@ -178,14 +178,14 @@ def create_simple_video(texto, nombre_salida, voz):
         video_final = concatenate_videoclips(clips_finales, method="compose")
         
         video_buffer = io.BytesIO()
-           video_final.write_videofile(
-        video_buffer,
-        fps=24,
-        codec='libx264',
-        audio_codec='aac',
-        preset='ultrafast',
-        threads=4,
-    )
+        video_final.write_videofile(
+            video_buffer,
+            fps=24,
+            codec='libx264',
+            audio_codec='aac',
+            preset='ultrafast',
+            threads=4,
+        )
         video_buffer.seek(0)
 
         video_final.close()
